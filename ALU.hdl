@@ -42,5 +42,44 @@ CHIP ALU {
         ng; // 1 if (out < 0),  0 otherwise
 
     PARTS:
+    
+// presetting values :
+	// zeros; pass x|y to a multiplexor (mux) with 0 as the alternate
+		Mux16(a=x,sel=zx,out=xzero);
+		Mux16(a=y,sel=zy,out=yzero);
 
+	// negatives; pass x|y and their negative into a multiplexor
+		Not16(in=xzero,out=notx);
+		Not16(in=yzero,out=noty);
+		Mux16(a=xzero,b=notx,sel=nx,out=xpreset);
+		Mux16(a=yzero,b=noty,sel=ny,out=ypreset);
+
+// bit select operation f() = addition | bitwise AND
+	
+	// bitwise addition
+		Add16(a=xpreset,b=ypreset,out=outaddition);
+	
+	// bitwise AND
+		And16(a=xpreset, b=ypreset,out = outand);
+
+	// mux both with the function selector
+		Mux16(a=outand,b=outaddition,sel=f,out=PostOpOut);
+
+// postsetting values
+	// negative; pass out and negative out to mux
+		Not16(in=PostOpOut, out = NegPostOpOut);
+		
+		//pull out first digit for negative test
+		Mux16(a=PostOpOut, b=NegPostOpOut, sel=no, out=out, out[15]=negative, out[0..7] = first8, out[8..15] = last8);
+
+// find if my final value is +/-/o
+	// negative? check if the first bit == 0
+		And(a=negative,b=true,out=ng);
+
+	// zero? check if both bytes are zero and give the not result
+		Or8Way(in=first8,out = firstHalfNonzero);
+		Or8Way(in=last8,out = secondHalfNonzero);
+		Or(a=firstHalfNonzero,b=secondHalfNonzero,out=zero);
+		Not(in=zero,out=zr);		
+		
 }
